@@ -1,3 +1,220 @@
+
+DevOps Design — UI + API + Database
+
+Submission by Dhanusri Mahalingam 
+
+Overview
+
+This design describes a scalable, secure, and highly available architecture consisting of:
+
+UI (React SPA hosted on AWS S3 + CloudFront)
+
+API (Containerized backend on ECS Fargate behind ALB)
+
+Database (Amazon RDS PostgreSQL with Multi-AZ)
+
+CI/CD (Conceptual GitHub Actions Pipeline)
+
+
+Architecture diagrams are included in diagram.pdf.
+
+1. UI (Frontend)
+
+Hosting
+
+Static React SPA stored in S3
+
+Delivered via CloudFront CDN for global latency reduction
+
+Route53 for domain DNS
+
+ACM for HTTPS certificates
+
+
+Traffic Flow
+
+User → Route53 → CloudFront → S3 (static content) Dynamic API calls → CloudFront → ALB → ECS tasks
+
+Caching & Performance
+
+CloudFront long TTL for hashed assets
+
+Cache invalidation triggered on deployments
+
+
+Security
+
+HTTPS everywhere
+
+WAF (OWASP rules)
+
+S3 bucket restricted using OAC/OAI
+
+2. Backend API (ECS Fargate)
+
+Deployment
+
+Backend containerized and deployed on ECS Fargate running in private subnets across 2 AZs
+
+ALB in public subnets forwards traffic to target group (ECS)
+
+
+Scaling
+
+ECS Service Auto Scaling based on:
+
+CPU > 70%
+
+Memory > 70%
+
+ALB RequestCount > threshold
+
+
+
+Secrets
+
+All sensitive data stored in AWS Secrets Manager
+
+IAM task role grants permission to read secrets
+
+
+Networking & Security
+
+ALB SG → ECS SG → RDS SG chain
+
+No public exposure for ECS tasks
+
+Health checks ensure rolling replacement of unhealthy tasks
+
+3. Database (RDS PostgreSQL)
+
+High Availability
+
+Multi-AZ enabled (standby replica auto-failover)
+
+Optional Read Replicas for read scaling
+
+
+Backups
+
+Automated backups (7–30 days retention)
+
+PITR (point-in-time recovery)
+
+Manual snapshots before deployments
+
+
+Scaling
+
+Vertical scaling for writes
+
+Read replicas for read-heavy workloads
+
+
+Migration Strategy
+
+Use schema migration tool (Flyway/Liquibase)
+
+Backward-compatible migrations:
+
+Add column → backfill → enforce constraints late
+
+4. CI/CD (Conceptual GitHub Actions)
+
+Triggers
+
+PR: run unit tests
+
+Push to main: build → test → deploy to dev
+
+Manual approval for stage → prod promotion
+
+
+Pipeline Stages
+
+A. Build: Lint, unit test frontend & backend
+
+
+B. Package: Build frontend artifact; conceptually push API image to ECR
+
+
+C. Deploy (Dev): Upload front-end to S3 + CloudFront invalidation; update ECS task definition
+
+
+D. E2E Tests: Smoke tests
+
+
+E. Approval Step: Manual reviewer input
+
+
+F. Deploy (Prod): Same process for prod
+
+
+G. Rollback: If health checks fail, revert to previous version
+
+5. Monitoring, Logging & Alerting
+
+Logs
+
+CloudWatch Logs for ECS tasks
+
+CloudFront/S3 access logs stored to S3
+
+
+Metrics
+
+ALB: 4xx/5xx rates, latency
+
+ECS: CPU/memory
+
+RDS: Connections, IOPS, storage
+
+
+Alerts
+
+CloudWatch Alarms → SNS → Email/PagerDuty
+
+6. Cost Considerations
+
+S3 + CloudFront: minimal
+
+ECS Fargate: based on vCPU + memory per task
+
+RDS Multi-AZ: higher due to standby replica
+
+NAT Gateways: per-hour + data processing
+
+AWS Budgets recommended
+
+7. Security
+
+IAM least privilege
+
+No public access to ECS/RDS
+
+Secrets in Secrets Manager
+
+TLS termination on CloudFront/ALB
+
+VPC Flow Logs optional
+
+8. Backup & DR
+
+RDS automated backups & snapshots
+
+Cross-region read replica for DR
+
+S3 versioning enabled
+
+9. Migration Strategy
+
+Blue/Green deployments for API
+
+Frontend versioning with S3 + CloudFront
+
+
+
+
 # AWS Project - Build a Full End-to-End Web Application with 7 Services | Step-by-Step Tutorial
 
 This repo contains the code files used in this [YouTube video](https://youtu.be/K6v6t5z6AsU).
